@@ -8,12 +8,14 @@ This is a simple web application written in Node.js using the H3 framework. H3 i
 
 To install the dependencies, run the following command:
 
+
 npm install
 ## Usage
 
 To start the server, run the following command:
+```bash
 npm start
-
+```
 
 This will start the server on port 3000. You can then visit http://localhost:3000/ in your web browser to see the "Hello World!" message.
 
@@ -40,7 +42,9 @@ Finally, it creates an HTTP server using Node.js and starts listening for incomi
 
 createServer(toNodeListener(app)).listen(process.env.PORT || 3000);
 console.log('app is running on port 3000');
+```
 
-Run application
+## Run application
 
+```js
 node app.js

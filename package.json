@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "h3": "^1.7.1"
+  },
+  "type": "module",
+  "author": {
+    "email": "m789219@gmail.com",
+    "name": "Mohammad Hasani",
+    "url": "https://mohammadhasanii.ir"
+  }
+}

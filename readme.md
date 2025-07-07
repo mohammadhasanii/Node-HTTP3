@@ -1,56 +1,120 @@
 # Node-HTTP3
 
-This project is a simple example of a web application in Node.js using the H3 framework. The main goal is to demonstrate how to use the H3 framework to build fast and lightweight web applications. Additionally, since H3 works directly on HTTP/3, it has security features and higher speed compared to HTTP/1 and HTTP/2.
+This project is a simple, modern web server built in Node.js using the **h3** framework. The main goal is to demonstrate how to build a lightweight and fast application with this framework.
 
-H3 is a lightweight and fast framework for building web applications that works directly on HTTP/3. It uses technologies such as async/await and Promise for processing web requests and has features such as routing, fast processing, and interaction with other frameworks.
+**⚠️ Important Note:** Contrary to what its name might suggest, the `h3` framework does not natively implement the HTTP/3 protocol. `h3` is a modern, high-performance **web framework** that runs on Node.js's standard HTTP engine (HTTP/1.1 or HTTP/2).
 
-The superiority of H3 over Express or Node.js lies in its processing speed.
+To enable clients to connect to this application using the actual **HTTP/3** protocol, it must be deployed behind a **Reverse Proxy** like Nginx or Caddy. This guide explains how to achieve that.
 
+![Example Image](demo.png)
 
+***
 
-![Example Image](https://www.zdnet.com/a/img/resize/8c124d7505313d9c9830fb14c6ca9bb1e902dd68/2018/11/12/2df16a7a-72be-437b-ae9a-7267a33085ea/http3.png?auto=webp&width=1280)
+## ⚙️ How This Project Works
 
-## Installation
+The core code creates a simple server with two routes:
 
-To install the dependencies, run the following command:
+1.  The `/` route, which returns "Hello World!".
+2.  The `/hello/:name` route, which returns a personalized greeting.
 
+This logic is implemented using the `h3` framework, known for its minimalism and high performance.
 
-npm install
-## Usage
-
-To start the server, run the following command:
-```bash
-npm start
-```
-
-This will start the server on port 3000. You can then visit http://localhost:3000/ in your web browser to see the "Hello World!" message.
-
-You can also visit http://localhost:3000/hello/{name} to see a personalized message that includes the name you specify in the URL.
-
-## Code Overview
-
-The code starts by importing the necessary modules and creating an H3 app:
-
-```js
+```javascript
 import { createServer } from 'node:http';
 import { createApp, eventHandler, createRouter, toNodeListener } from 'h3';
 
 const app = createApp();
-It then creates an H3 router that handles requests to the root path ("/") and the "/hello/{name}" path:
 
 const router = createRouter()
     .get('/', eventHandler(() => 'Hello World!'))
-    .get('/hello/:name', eventHandler((event) => `Hello ${event.context.params.name}!`)
-    );
+    .get('/hello/:name', eventHandler((event) => `Hello ${event.context.params.name}!`));
 
 app.use(router);
-Finally, it creates an HTTP server using Node.js and starts listening for incoming requests:
 
+// The server runs on Node's standard HTTP engine
 createServer(toNodeListener(app)).listen(process.env.PORT || 3000);
-console.log('app is running on port 3000');
+console.log('App is running on port 3000');
 ```
 
-## Run application
+***
 
-```js
-node app.js
+## 🚀 Enabling HTTP/3 with Nginx
+
+To allow users to connect to your application via HTTP/3, we need to configure Nginx as a reverse proxy.
+
+**The final architecture will be:**
+
+`User <--- (HTTP/3) ---> Nginx <--- (HTTP/1.1) ---> Your Node.js App`
+
+### Step 1: Prerequisites
+
+1.  A server (VPS) running a Linux distribution.
+2.  A domain name pointed to your server's IP address.
+3.  **Nginx version 1.25.0 or newer**, compiled with QUIC support.
+4.  An SSL/TLS certificate for your domain (you can get one for free from Let's Encrypt).
+
+### Step 2: Run the Node.js Application
+
+First, run your application on the server. It's best practice to use a process manager like `pm2` to ensure the app is always running.
+
+```bash
+# Install pm2 globally
+npm install pm2 -g
+
+# Start the application with pm2
+pm2 start app.js --name "h3-app"
+```
+
+This command will start your application on port `3000`.
+
+### Step 3: Configure Nginx
+
+Edit your site's Nginx configuration file (usually located at `/etc/nginx/sites-available/yourdomain.com`) with the following content:
+
+```nginx
+server {
+    # Listen on port 443 for HTTPS, HTTP/2, and HTTP/3 traffic
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    listen 443 quic reuseport;
+    listen [::]:443 quic reuseport;
+
+    # Set your domain name
+    server_name yourdomain.com;
+
+    # SSL Certificate paths
+    ssl_certificate /etc/letsencrypt/live/[yourdomain.com/fullchain.pem](https://yourdomain.com/fullchain.pem);
+    ssl_certificate_key /etc/letsencrypt/live/[yourdomain.com/privkey.pem](https://yourdomain.com/privkey.pem);
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # Advertise HTTP/3 support to browsers
+    add_header Alt-Svc 'h3=":443"; ma=86400';
+
+    # Forward all requests to the Node.js application
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# (Optional) Redirect HTTP traffic to HTTPS
+server {
+    listen 80;
+    server_name yourdomain.com;
+    return 301 https://$host$request_uri;
+}
+```
+
+### Step 4: Restart Nginx
+
+After saving the configuration, test it and restart Nginx.
+
+```bash
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+Your application is now accessible via your domain with full **HTTP/3** support! You can verify this using online tools like **HTTP/3 Check**.

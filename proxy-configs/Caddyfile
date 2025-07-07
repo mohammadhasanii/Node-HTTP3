@@ -1,0 +1,11 @@
+# Caddyfile Example
+# Replace yourdomain.com with your actual domain
+
+yourdomain.com {
+    # Enable HTTP/3 (this is on by default in Caddy v2)
+    # Caddy will automatically handle HTTPS and certificates for you.
+
+    # Reverse proxy requests to the Node.js app
+    # Assumes the Node.js app is running on the same machine on port 3000
+    reverse_proxy localhost:3000
+}
